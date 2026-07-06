@@ -25,13 +25,136 @@ export function getDb() {
 }
 
 function createEmptyDb() {
-  return {
+  const empty = {
     reviews: [],
     analysis: [],
     embeddings: [],
     digests: [],
     sync_log: []
   };
+
+  try {
+    const seedPath = path.join(__dirname, '..', 'data', 'seed-reviews.json');
+    if (fs.existsSync(seedPath)) {
+      console.log('[JSON DB] No database file found. Auto-seeding from seed-reviews.json...');
+      const rawData = JSON.parse(fs.readFileSync(seedPath, 'utf-8'));
+      
+      const reviews = rawData.map(r => ({
+        id: r.id,
+        source: r.source,
+        text: r.text,
+        cleaned_text: r.cleaned_text || null,
+        rating: r.rating,
+        date: r.date,
+        author: r.author,
+        upvotes: r.upvotes || 0,
+        url: r.url || null,
+        word_count: r.word_count || null,
+        sentiment_hint: r.sentiment_hint || null,
+        is_spam: r.is_spam ? 1 : 0,
+        language: r.language || 'en',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }));
+
+      const analysis = [];
+      for (const review of rawData) {
+        if (review._analysis) {
+          analysis.push({
+            review_id: review.id,
+            sentiment: review._analysis.sentiment,
+            sentiment_intensity: review._analysis.sentiment_intensity,
+            sentiment_emotion: review._analysis.sentiment_emotion,
+            primary_topic: review._analysis.primary_topic,
+            secondary_topics: Array.isArray(review._analysis.secondary_topics) ? review._analysis.secondary_topics : JSON.parse(review._analysis.secondary_topics || '[]'),
+            topic_confidence: review._analysis.topic_confidence,
+            user_goal: review._analysis.user_goal,
+            unmet_need: review._analysis.unmet_need,
+            frustration_level: review._analysis.frustration_level,
+            feature_request: review._analysis.feature_request,
+            user_type: review._analysis.user_type,
+            usage_pattern: review._analysis.usage_pattern,
+            discovery_mindset: review._analysis.discovery_mindset,
+            analyzed_at: new Date().toISOString()
+          });
+        }
+      }
+
+      const seedDb = {
+        reviews,
+        analysis,
+        embeddings: [],
+        digests: [],
+        sync_log: [{
+          id: 1,
+          status: 'completed',
+          reviews_harvested: reviews.length,
+          reviews_cleaned: reviews.length,
+          reviews_embedded: 0,
+          reviews_analyzed: analysis.length,
+          error_message: null,
+          started_at: new Date().toISOString(),
+          completed_at: new Date().toISOString()
+        }]
+      };
+
+      // Temporarily set the global db reference so that getWeeklyStats works inside createEmptyDb
+      db = seedDb;
+      
+      const stats = getWeeklyStats();
+      const topComplaint = stats.topTopics.find(t => t.neg_pct > 50) || stats.topTopics[0];
+      const topPraise = stats.topPraises[0];
+      const topSegment = stats.topSegments[0];
+      
+      const digestContent = {
+        biggest_complaint: {
+          title: topComplaint ? topComplaint.primary_topic.replace(/_/g, ' ') : 'General dissatisfaction',
+          detail: topComplaint ? `${topComplaint.count} mentions with ${Math.round(topComplaint.neg_pct)}% negative sentiment` : 'No data',
+          change: 'Trending this week',
+        },
+        biggest_praise: {
+          title: topPraise ? topPraise.primary_topic.replace(/_/g, ' ') : 'Overall service',
+          detail: topPraise ? `${topPraise.count} positive mentions` : 'No data',
+        },
+        emerging_issue: {
+          title: stats.topTopics[1]?.primary_topic?.replace(/_/g, ' ') || 'No emerging issue',
+          detail: stats.topTopics[1] ? `${stats.topTopics[1].count} mentions` : 'No spikes detected',
+          volume: stats.topTopics[1] ? `${stats.topTopics[1].count} reviews` : '0',
+        },
+        most_affected_segment: {
+          segment: topSegment?.user_type?.replace(/_/g, ' ') || 'Unknown',
+          detail: topSegment ? `Highest negative sentiment this week` : 'No data',
+          negative_pct: topSegment ? `${Math.round(topSegment.neg_pct)}%` : '0%',
+        },
+        surprising_insight: {
+          title: 'Cross-topic sentiment gap',
+          detail: `Users with complaints about ${topComplaint?.primary_topic?.replace(/_/g, ' ') || 'features'} still rate other aspects positively`,
+        },
+        summary: `This week saw ${stats.totalReviews} reviews. The most discussed topic was ${topComplaint?.primary_topic?.replace(/_/g, ' ') || 'general feedback'} with ${topComplaint?.count || 0} mentions. ${topSegment?.user_type?.replace(/_/g, ' ') || 'Users'} were the most vocal segment.`,
+        generated_at: new Date().toISOString(),
+        total_reviews: stats.totalReviews,
+      };
+
+      const now = new Date();
+      const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const weekEnd = now.toISOString().split('T')[0];
+
+      seedDb.digests.push({
+        id: 1,
+        week_start: weekStart,
+        week_end: weekEnd,
+        content: JSON.stringify(digestContent),
+        generated_at: new Date().toISOString()
+      });
+
+      console.log(`[JSON DB] Successfully auto-seeded ${reviews.length} reviews, ${analysis.length} analyses, and generated 1 weekly digest.`);
+      return seedDb;
+    }
+  } catch (err) {
+    console.error('[JSON DB] Auto-seeding failed:', err.message);
+  }
+
+  return empty;
 }
 
 function saveDb() {
