@@ -1,0 +1,67 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background-color: #0c0b0b;
+    color: #f3f4f6;
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Outfit', sans-serif;
+  }
+}
+
+/* Premium custom UI styles */
+.glass-panel {
+  background: rgba(22, 22, 22, 0.7);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.glass-panel-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-panel-hover:hover {
+  background: rgba(33, 33, 33, 0.8);
+  border-color: rgba(29, 185, 84, 0.3);
+  box-shadow: 0 10px 30px -15px rgba(29, 185, 84, 0.1);
+  transform: translateY(-2px);
+}
+
+/* Live Waveform animation */
+@keyframes wave-bounce {
+  0%, 100% {
+    transform: scaleY(0.3);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.wave-bar {
+  animation: wave-bounce 1.2s ease-in-out infinite;
+  transform-origin: bottom;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0c0b0b;
+}
+::-webkit-scrollbar-thumb {
+  background: #282828;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #1db954;
+}

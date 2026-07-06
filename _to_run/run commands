@@ -1,0 +1,8 @@
+# 1. Start the API Server (Default port: 3001)
+npm run dev
+
+# 2. Start the Vite Frontend (in a new tab/window)
+npm run dev:frontend
+
+# 3. Start the Background Ingestion Scheduler (in a new tab/window)
+npm run scheduler
